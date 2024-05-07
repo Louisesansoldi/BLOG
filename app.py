@@ -68,10 +68,31 @@ def login():
     return jsonify({'token': token}), 200
 
 
+
+# _________________________ UNIVERSE _________________________ 
+
+
+@app.route('/api/universe', methods=['POST'])
+def universe():
+    data = request.get_json()
+    titleUniverse = data['titleUniverse']
+    backgroundUniverse = data['backgroundUniverse']
+    descriptionUniverse = data['descriptionUniverse']
+
+    print(titleUniverse)
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO universe (titleUniverse, backgroundUniverse, descriptionUniverse) VALUES (%s, %s, %s)", (titleUniverse, backgroundUniverse, descriptionUniverse))
+    mysql.connection.commit()
+
+    return jsonify({'message': 'This is your universe'}), 201
+
+
+
 # _________________________ POSTS _________________________ 
 
 
-@app.route('api/posts', methods=['POST'])
+@app.route('/api/posts', methods=['POST'])
 def posts():
     data = request.get_json()
     title = data['title']
@@ -80,16 +101,13 @@ def posts():
     content = data['content']
     link= data['link']
 
+    print(title)
+
     cursor = mysql.connection.cursor()
     cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link) VALUES (%s, %s, %s, %s, %s)", (title, image, imageTitle, content, link))
     mysql.connection.commit()
 
     return jsonify({'message': 'Posted !'}), 201
-s
-
-
-
-
 
 
 

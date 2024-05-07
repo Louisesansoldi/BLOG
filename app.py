@@ -28,17 +28,20 @@ def hello_world():
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json()
+    name = data['name']
     email = data['email']
     password = data['password']
 
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
+    # Hasher le mot de passe et le stocker en tant que chaîne de caractères
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, hashed_password))
+    cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
     mysql.connection.commit()
 
     return jsonify({'message': 'User registered successfully'}), 201
+
+
 
 # _________________________ LOGIN _________________________ 
 @app.route('/api/auth/login', methods=['POST'])
@@ -51,7 +54,8 @@ def login():
     cursor.execute("SELECT password FROM users WHERE email = %s", (email,))
     result = cursor.fetchone()
 
-    if result is None or not bcrypt.checkpw(password.encode('utf-8'), result[0]):
+    # Vérifier si le mot de passe haché existe et correspond au mot de passe fourni
+    if result is None or not bcrypt.checkpw(password.encode('utf-8'), result[0].encode('utf-8')):
         return jsonify({'message': 'Invalid email or password'}), 401
 
     # Charger le secret JWT à partir des variables d'environnement
@@ -61,7 +65,43 @@ def login():
 
     # Générer le token JWT
     token = jwt.encode({'id': result[0], 'email': email}, jwt_secret, algorithm='HS256')
-    return jsonify({'token': token.decode('utf-8')}), 200
+    return jsonify({'token': token}), 200
+
+
+# _________________________ POSTS _________________________ 
+
+
+@app.route('api/posts', methods=['POST'])
+def posts():
+    data = request.get_json()
+    title = data['title']
+    image = data['image']
+    imageTitle = data['imageTitle']
+    content = data['content']
+    link= data['link']
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link) VALUES (%s, %s, %s, %s, %s)", (title, image, imageTitle, content, link))
+    mysql.connection.commit()
+
+    return jsonify({'message': 'Posted !'}), 201
+s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+

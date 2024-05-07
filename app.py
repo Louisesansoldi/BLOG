@@ -1,11 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_mysqldb import MySQL
 import bcrypt
-import jwt
 import os
 from dotenv import load_dotenv
-# from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
-
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 
 load_dotenv()
 
@@ -15,13 +13,15 @@ app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
+app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 app.config['JWT_HEADER_NAME'] = 'Authorization'
 app.config['JWT_HEADER_TYPE'] = 'Bearer'
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 # Récupérer la clé secrète à partir des variables d'environnement
-# JWT_SECRET = os.getenv('JWT_SECRET')
-print(app.config['JWT_SECRET_KEY'])
-# jwt = JWTManager(app)
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET')
+
+
+
+jwt = JWTManager(app)
 
 mysql = MySQL()
 mysql.init_app(app)
@@ -55,6 +55,7 @@ def register():
 # _________________________ LOGIN _________________________ 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
+    
     data = request.get_json()
     email = data['email']
     password = data['password']
@@ -76,7 +77,7 @@ def login():
     # token = jwt.encode({'id': result[0], 'email': email}, jwt_secret, algorithm='HS256')
     # return jsonify({'token': token}), 200
 
-    token = create_access_token(identity={'id': result[0], 'email': email})
+    token = create_access_token(identity=email)
     return jsonify({'token': token}), 200
 
 
@@ -105,7 +106,7 @@ def universe():
 
 
 @app.route('/api/posts', methods=['POST'])
-# @jwt_required() # l'utilisateur est authentifié
+@jwt_required() # l'utilisateur est authentifié
 def posts():
     data = request.get_json()
     user_id = get_jwt_identity() # Récupérez l'identifiant de l'utilisateur authentifié
@@ -114,6 +115,10 @@ def posts():
     imageTitle = data['imageTitle']
     content = data['content']
     link= data['link']
+    
+    print("Logged in as:", user_id)
+    
+    
 
     print(title)
 
@@ -121,9 +126,9 @@ def posts():
     cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link) VALUES (%s, %s, %s, %s, %s)", (title, image, imageTitle, content, link))
     mysql.connection.commit()
 
+    
     return jsonify({'message': 'Posted !'}), 201
-
-
+    
 
 
 if __name__ == '__main__':

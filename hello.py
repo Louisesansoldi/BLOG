@@ -40,3 +40,7 @@
 # @app.route('/hello/<name>')
 # def hello(name=None):
 #     return render_template('hello.html', name=name)
+
+# # _________________________ CREATE JWT _________________________
+# secret_key = os.urandom(32).hex()
+# print(secret_key)

@@ -4,6 +4,8 @@ import bcrypt
 import jwt
 import os
 from dotenv import load_dotenv
+# from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+
 
 load_dotenv()
 
@@ -12,12 +14,19 @@ app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
+app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
+app.config['JWT_HEADER_NAME'] = 'Authorization'
+app.config['JWT_HEADER_TYPE'] = 'Bearer'
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+# Récupérer la clé secrète à partir des variables d'environnement
+# JWT_SECRET = os.getenv('JWT_SECRET')
+print(app.config['JWT_SECRET_KEY'])
+# jwt = JWTManager(app)
 
 mysql = MySQL()
 mysql.init_app(app)
 
-# Récupérer la clé secrète à partir des variables d'environnement
-JWT_SECRET = os.getenv('JWT_SECRET')
+
 
 # _________________________ TEST _________________________ 
 @app.route("/")
@@ -63,8 +72,11 @@ def login():
     if jwt_secret is None:
         return jsonify({'message': 'JWT secret not found'}), 500
 
-    # Générer le token JWT
-    token = jwt.encode({'id': result[0], 'email': email}, jwt_secret, algorithm='HS256')
+    # # Générer le token JWT
+    # token = jwt.encode({'id': result[0], 'email': email}, jwt_secret, algorithm='HS256')
+    # return jsonify({'token': token}), 200
+
+    token = create_access_token(identity={'id': result[0], 'email': email})
     return jsonify({'token': token}), 200
 
 
@@ -93,8 +105,10 @@ def universe():
 
 
 @app.route('/api/posts', methods=['POST'])
+# @jwt_required() # l'utilisateur est authentifié
 def posts():
     data = request.get_json()
+    user_id = get_jwt_identity() # Récupérez l'identifiant de l'utilisateur authentifié
     title = data['title']
     image = data['image']
     imageTitle = data['imageTitle']
@@ -108,13 +122,6 @@ def posts():
     mysql.connection.commit()
 
     return jsonify({'message': 'Posted !'}), 201
-
-
-
-
-
-
-
 
 
 

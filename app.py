@@ -172,21 +172,32 @@ def get_universe(id):
 # _________________________ UPDATE UNIVERSE _________________________                  PROBLEM ?
 
 @app.route('/api/universe/<int:id>', methods=['PUT'])
-@jwt_required() # l'user est authentifié
+@jwt_required() # l'utilisateur est authentifié
 def update_universe(id):
     data = request.get_json()
-    user_id = get_jwt_identity() # Récup id de l'user authentifié
+    email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
 
-    # Vérifier si l'user a le droit de m-à-j cet universe
+    # Récupérer l'ID de l'utilisateur à partir de son adresse e-mail
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user_id_row = cursor.fetchone()
+
+    # Vérifier si un ID d'utilisateur a été trouvé
+    if user_id_row is None:
+        abort(404, description="Utilisateur introuvable")
+
+    user_id = user_id_row[0]  # Récupérer l'ID de l'utilisateur
+    cursor.close()
+
+    # Vérifier si l'utilisateur a le droit de mettre à jour cet univers
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT user_id FROM universe WHERE id = %s", (id,))
     result = cursor.fetchone()
 
     if not result or result[0] != user_id:
-        abort(403, description="you can't update this universe")
+        abort(403, description="Vous n'êtes pas autorisé à mettre à jour cet univers")
 
-
-    # M-à-j de l'univers
+    # Mettre à jour l'univers
     titleUniverse = data.get('titleUniverse')
     backgroundUniverse = data.get('backgroundUniverse')
     descriptionUniverse = data.get('descriptionUniverse')
@@ -194,34 +205,8 @@ def update_universe(id):
     cursor.execute("UPDATE universe SET titleUniverse = %s, backgroundUniverse = %s, descriptionUniverse = %s WHERE id = %s", (titleUniverse, backgroundUniverse, descriptionUniverse, id))
     mysql.connection.commit()
 
-    return jsonify({'message': 'Super'}), 200
+    return jsonify({'message': 'Mise à jour de l\'univers réussie'}), 200
 
-
-# _________________________ POSTS _________________________ 
-
-
-@app.route('/api/posts', methods=['POST'])
-@jwt_required() # l'user est authentifié
-def posts():
-    data = request.get_json()
-    user_id = get_jwt_identity() # Récup id de l'user authentifié
-    title = data['title']
-    image = data['image']
-    imageTitle = data['imageTitle']
-    content = data['content']
-    link = data['link']
-    
-    print("Logged in as:", user_id)
-    
-
-    print(title)
-
-    cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link) VALUES (%s, %s, %s, %s, %s)", (title, image, imageTitle, content, link))
-    mysql.connection.commit()
-
-    
-    return jsonify({'message': 'Posted !'}), 201
     
 # _________________________ COMMENTS _________________________ 
 

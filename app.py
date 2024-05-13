@@ -113,7 +113,7 @@ import base64
 
 @app.route('/api/universe', methods=['GET'])
 @jwt_required() # l'utilisateur est authentifié
-def get_universe():
+def get_universes():
     # Récupérer les données de l'univers
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id, titleUniverse, descriptionUniverse, backgroundUniverse FROM universe")
@@ -137,8 +137,32 @@ def get_universe():
         return jsonify({'message': 'No universes found'}), 404
 
 
+# _________________________ GET 1 UNIVERSE _________________________ 
 
+@app.route('/api/universe/<int:id>', methods=['GET'])
+@jwt_required() # l'utilisateur est authentifié
+def get_universe(id):
+    # Récupérer les données de l'univers
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, titleUniverse, descriptionUniverse, backgroundUniverse FROM universe WHERE id = %s", (id,))
+    universes_data = cursor.fetchall()
+    cursor.close()
 
+    universes = []
+    if universes_data:
+        for universe_data in universes_data:
+            universe = {
+                'id': universe_data[0],
+                'titleUniverse': universe_data[1],
+                'descriptionUniverse': universe_data[2],
+                # Convertir backgroundUniverse de BLOB en Base64
+                'backgroundUniverse': base64.b64encode(universe_data[3]).decode('utf-8')
+            }
+            universes.append(universe)
+
+        return jsonify(universes), 200
+    else:
+        return jsonify({'message': 'No universes found'}), 404
 
 # _________________________ UPDATE UNIVERSE _________________________ 
 

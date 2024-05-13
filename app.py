@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 from flask_mysqldb import MySQL
 import bcrypt
 import os
@@ -93,15 +93,21 @@ def login():
 @jwt_required() # l'utilisateur est authentifié
 def universe():
     data = request.get_json()
-    user_id = get_jwt_identity() # Récupérez l'identifiant de l'utilisateur authentifié
+    email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
     titleUniverse = data['titleUniverse']
     backgroundUniverse = data['backgroundUniverse']
     descriptionUniverse = data['descriptionUniverse']
 
-    print("Logged in as:", user_id)
+    cursor = mysql.connection.cursor()
+    # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user_id = cursor.fetchone()[0]  # Récupérer l'ID de l'utilisateur
+    cursor.close()
+
+    print("Logged in as:", email)
 
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO universe (titleUniverse, backgroundUniverse, descriptionUniverse) VALUES (%s, %s, %s)", (titleUniverse, backgroundUniverse, descriptionUniverse))
+    cursor.execute("INSERT INTO universe (titleUniverse, descriptionUniverse, backgroundUniverse, user_id) VALUES (%s, %s, %s, %s)", (titleUniverse, descriptionUniverse, backgroundUniverse, user_id))
     mysql.connection.commit()
 
     return jsonify({'message': 'This is your universe' }), 201
@@ -140,9 +146,8 @@ def get_universes():
 # _________________________ GET 1 UNIVERSE _________________________ 
 
 @app.route('/api/universe/<int:id>', methods=['GET'])
-@jwt_required() # l'utilisateur est authentifié
+@jwt_required() # l'user est authentifié
 def get_universe(id):
-    # Récupérer les données de l'univers
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id, titleUniverse, descriptionUniverse, backgroundUniverse FROM universe WHERE id = %s", (id,))
     universes_data = cursor.fetchall()
@@ -164,46 +169,47 @@ def get_universe(id):
     else:
         return jsonify({'message': 'No universes found'}), 404
 
-# _________________________ UPDATE UNIVERSE _________________________ 
+# _________________________ UPDATE UNIVERSE _________________________                  PROBLEM ?
 
-# @app.route('/api/universe/<int:id>', methods=['PUT'])
-# @jwt_required() # l'utilisateur est authentifié
-# def update_universe(id):
-#     data = request.get_json()
-#     user_id = get_jwt_identity() # Récupérer l'identifiant de l'utilisateur authentifié
+@app.route('/api/universe/<int:id>', methods=['PUT'])
+@jwt_required() # l'user est authentifié
+def update_universe(id):
+    data = request.get_json()
+    user_id = get_jwt_identity() # Récup id de l'user authentifié
 
-#     # Vérifier si l'utilisateur a le droit de mettre à jour cet univers
-#     cursor = mysql.connection.cursor()
-#     cursor.execute("SELECT user_id FROM universe WHERE id = %s", (id,))
-#     result = cursor.fetchone()
+    # Vérifier si l'user a le droit de m-à-j cet universe
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT user_id FROM universe WHERE id = %s", (id,))
+    result = cursor.fetchone()
 
-#     if not result or result['user_id'] != user_id:
-#         abort(403, description="Unauthorized to update this universe")
+    if not result or result[0] != user_id:
+        abort(403, description="you can't update this universe")
 
-#     # Mettre à jour l'univers
-#     titleUniverse = data.get('titleUniverse')
-#     backgroundUniverse = data.get('backgroundUniverse')
-#     descriptionUniverse = data.get('descriptionUniverse')
 
-#     cursor.execute("UPDATE universe SET titleUniverse = %s, backgroundUniverse = %s, descriptionUniverse = %s WHERE id = %s", (titleUniverse, backgroundUniverse, descriptionUniverse, id))
-#     mysql.connection.commit()
+    # M-à-j de l'univers
+    titleUniverse = data.get('titleUniverse')
+    backgroundUniverse = data.get('backgroundUniverse')
+    descriptionUniverse = data.get('descriptionUniverse')
 
-#     return jsonify({'message': 'Universe updated successfully'}), 200
+    cursor.execute("UPDATE universe SET titleUniverse = %s, backgroundUniverse = %s, descriptionUniverse = %s WHERE id = %s", (titleUniverse, backgroundUniverse, descriptionUniverse, id))
+    mysql.connection.commit()
+
+    return jsonify({'message': 'Super'}), 200
 
 
 # _________________________ POSTS _________________________ 
 
 
 @app.route('/api/posts', methods=['POST'])
-@jwt_required() # l'utilisateur est authentifié
+@jwt_required() # l'user est authentifié
 def posts():
     data = request.get_json()
-    user_id = get_jwt_identity() # Récupérez l'identifiant de l'utilisateur authentifié
+    user_id = get_jwt_identity() # Récup id de l'user authentifié
     title = data['title']
     image = data['image']
     imageTitle = data['imageTitle']
     content = data['content']
-    link= data['link']
+    link = data['link']
     
     print("Logged in as:", user_id)
     
@@ -218,6 +224,44 @@ def posts():
     return jsonify({'message': 'Posted !'}), 201
     
 # _________________________ COMMENTS _________________________ 
+
+
+@app.route('/api/comments/<int:posts_id>', methods=['POST'])
+@jwt_required() # l'utilisateur est authentifié
+def comments(posts_id):
+    data = request.get_json()
+    email = get_jwt_identity()  # Récupérer l'adresse e-mail de l'utilisateur authentifié
+
+    # Récupérer le nom de l'utilisateur à partir de l'adresse e-mail
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT name FROM users WHERE email = %s", (email,))
+    user_name_row = cursor.fetchone()
+
+    # Récupérer l'id de l'utilisateur à partir de l'adresse e-mail
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    users_id_row = cursor.fetchone()
+
+
+    # Vérifier si un nom d'utilisateur a été trouvé
+    if user_name_row is None:
+        return jsonify({'message': 'Utilisateur introuvable'}), 404
+
+    user_name = user_name_row[0]  # Récupérer le nom de l'utilisateur
+    cursor.close()
+
+    users_id = users_id_row[0]  # Récupérer l'id de l'utilisateur
+    cursor.close()
+
+    # Récupérer le contenu du commentaire
+    contentComments = data.get('contentComments')
+
+    # Insérer le commentaire dans la base de données
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO comments (user_name, contentComments, users_id, posts_id) VALUES (%s, %s, %s, %s)", (user_name, contentComments, users_id, posts_id))
+    mysql.connection.commit()
+
+    return jsonify({'message': 'Commentaire posté !'}), 201
 
 
 

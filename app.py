@@ -107,27 +107,35 @@ def universe():
     return jsonify({'message': 'This is your universe' }), 201
 
 
-# _________________________ SEE UNIVERSE _________________________ 
+# _________________________ GET ALL UNIVERSES _________________________ 
 
-# import base64
+import base64
 
-# @app.route('/api/universe/<int:id>', methods=['GET'])
-# @jwt_required() # l'utilisateur est authentifié
-# def get_universe(id):
-#     # Récupérer les données de l'univers
-#     cursor = mysql.connection.cursor(dictionary=True)
-#     cursor.execute("SELECT id, titleUniverse, descriptionUniverse, backgroundUniverse FROM universe WHERE id = %s", (id,))
-#     universe = cursor.fetchone()
-#     cursor.close()
+@app.route('/api/universe', methods=['GET'])
+@jwt_required() # l'utilisateur est authentifié
+def get_universe():
+    # Récupérer les données de l'univers
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, titleUniverse, descriptionUniverse, backgroundUniverse FROM universe")
+    universes_data = cursor.fetchall()
+    cursor.close()
 
-#     if universe:
-#         # Convertir backgroundUniverse de BLOB en Base64
-#         background_universe_base64 = base64.b64encode(universe['backgroundUniverse']).decode('utf-8')
-#         universe['backgroundUniverse'] = background_universe_base64
+    universes = []
+    if universes_data:
+        for universe_data in universes_data:
+            universe = {
+                'id': universe_data[0],
+                'titleUniverse': universe_data[1],
+                'descriptionUniverse': universe_data[2],
+                # Convertir backgroundUniverse de BLOB en Base64
+                'backgroundUniverse': base64.b64encode(universe_data[3]).decode('utf-8')
+            }
+            universes.append(universe)
 
-#         return jsonify(universe), 200
-#     else:
-#         return jsonify({'message': 'Universe not found'}), 404
+        return jsonify(universes), 200
+    else:
+        return jsonify({'message': 'No universes found'}), 404
+
 
 
 

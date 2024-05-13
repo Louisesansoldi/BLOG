@@ -16,6 +16,7 @@ app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
 app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 app.config['JWT_HEADER_NAME'] = 'Authorization'
 app.config['JWT_HEADER_TYPE'] = 'Bearer'
+# app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 # Récupérer la clé secrète à partir des variables d'environnement
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET')
 
@@ -31,7 +32,10 @@ mysql.init_app(app)
 # _________________________ TEST _________________________ 
 @app.route("/")
 def hello_world():
+
     return "<p>Hello, World!!!!!!! ehehehe</p>"
+
+
 
 # _________________________ REGISTER _________________________ 
 @app.route('/api/auth/register', methods=['POST'])
@@ -82,24 +86,77 @@ def login():
 
 
 
-# _________________________ UNIVERSE _________________________ 
+# _________________________ CREATE UNIVERSE _________________________ 
 
 
 @app.route('/api/universe', methods=['POST'])
+@jwt_required() # l'utilisateur est authentifié
 def universe():
     data = request.get_json()
+    user_id = get_jwt_identity() # Récupérez l'identifiant de l'utilisateur authentifié
     titleUniverse = data['titleUniverse']
     backgroundUniverse = data['backgroundUniverse']
     descriptionUniverse = data['descriptionUniverse']
 
-    print(titleUniverse)
+    print("Logged in as:", user_id)
 
     cursor = mysql.connection.cursor()
     cursor.execute("INSERT INTO universe (titleUniverse, backgroundUniverse, descriptionUniverse) VALUES (%s, %s, %s)", (titleUniverse, backgroundUniverse, descriptionUniverse))
     mysql.connection.commit()
 
-    return jsonify({'message': 'This is your universe'}), 201
+    return jsonify({'message': 'This is your universe' }), 201
 
+
+# _________________________ SEE UNIVERSE _________________________ 
+
+# import base64
+
+# @app.route('/api/universe/<int:id>', methods=['GET'])
+# @jwt_required() # l'utilisateur est authentifié
+# def get_universe(id):
+#     # Récupérer les données de l'univers
+#     cursor = mysql.connection.cursor(dictionary=True)
+#     cursor.execute("SELECT id, titleUniverse, descriptionUniverse, backgroundUniverse FROM universe WHERE id = %s", (id,))
+#     universe = cursor.fetchone()
+#     cursor.close()
+
+#     if universe:
+#         # Convertir backgroundUniverse de BLOB en Base64
+#         background_universe_base64 = base64.b64encode(universe['backgroundUniverse']).decode('utf-8')
+#         universe['backgroundUniverse'] = background_universe_base64
+
+#         return jsonify(universe), 200
+#     else:
+#         return jsonify({'message': 'Universe not found'}), 404
+
+
+
+
+# _________________________ UPDATE UNIVERSE _________________________ 
+
+# @app.route('/api/universe/<int:id>', methods=['PUT'])
+# @jwt_required() # l'utilisateur est authentifié
+# def update_universe(id):
+#     data = request.get_json()
+#     user_id = get_jwt_identity() # Récupérer l'identifiant de l'utilisateur authentifié
+
+#     # Vérifier si l'utilisateur a le droit de mettre à jour cet univers
+#     cursor = mysql.connection.cursor()
+#     cursor.execute("SELECT user_id FROM universe WHERE id = %s", (id,))
+#     result = cursor.fetchone()
+
+#     if not result or result['user_id'] != user_id:
+#         abort(403, description="Unauthorized to update this universe")
+
+#     # Mettre à jour l'univers
+#     titleUniverse = data.get('titleUniverse')
+#     backgroundUniverse = data.get('backgroundUniverse')
+#     descriptionUniverse = data.get('descriptionUniverse')
+
+#     cursor.execute("UPDATE universe SET titleUniverse = %s, backgroundUniverse = %s, descriptionUniverse = %s WHERE id = %s", (titleUniverse, backgroundUniverse, descriptionUniverse, id))
+#     mysql.connection.commit()
+
+#     return jsonify({'message': 'Universe updated successfully'}), 200
 
 
 # _________________________ POSTS _________________________ 
@@ -118,7 +175,6 @@ def posts():
     
     print("Logged in as:", user_id)
     
-    
 
     print(title)
 
@@ -129,6 +185,8 @@ def posts():
     
     return jsonify({'message': 'Posted !'}), 201
     
+# _________________________ COMMENTS _________________________ 
+
 
 
 if __name__ == '__main__':

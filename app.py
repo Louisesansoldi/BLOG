@@ -239,8 +239,35 @@ def posts():
 
     return jsonify({'message': 'Posted !'}), 201
 
-
+# _________________________ GET POSTS _________________________ 
     
+    
+@app.route('/api/posts/<int:user_id>', methods=['GET'])
+def get_user_posts(user_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM posts WHERE user_id = %s", (user_id,))
+    user_posts = cursor.fetchall()
+    cursor.close()
+
+    if user_posts:
+        # Format the posts data into a JSON response
+        posts_data = []
+        for post in user_posts:
+            post_data = {
+                'id': post[0],
+                'title': post[1],
+                'image': base64.b64encode(post[2]).decode('utf-8'),
+                'imageTitle': post[3],
+                'content': post[4],
+                'link': post[5],
+                'user_id': post[6]  # Assuming user_id is the 7th column in your table
+            }
+            posts_data.append(post_data)
+
+        return jsonify({'user_id': user_id, 'posts': posts_data}), 200
+    else:
+        return jsonify({'message': 'No posts found for user with ID {}'.format(user_id)}), 404
+
 # _________________________ POST COMMENTS _________________________ 
 
 

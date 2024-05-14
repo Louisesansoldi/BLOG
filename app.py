@@ -273,6 +273,41 @@ def get_comments(posts_id):
     else:
         return jsonify({'message': 'No comments found for post with ID {}'.format(posts_id)}), 404
 
+# _________________________ ADD LIKES _________________________ 
+
+@app.route('/api/posts/<int:posts_id>/likes', methods=['POST'])
+@jwt_required()
+def like_post(posts_id):
+    # Vérifier si le post existe
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id FROM posts WHERE id = %s", (posts_id,))
+    post = cursor.fetchone()
+    cursor.close()
+
+    if not post:
+        return jsonify({'message': 'Post not found'}), 404
+
+    # Incrémenter le nombre de likes pour le post
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO likes (posts_id, likes_count) VALUES (%s, 1) ON DUPLICATE KEY UPDATE likes_count = likes_count + 1", (posts_id,))
+    mysql.connection.commit()
+    cursor.close()
+
+    return jsonify({'message': 'Post liked successfully'}), 200
+
+# _________________________ GET LIKES _________________________ 
+
+@app.route('/api/posts/<int:posts_id>/likes', methods=['GET'])
+def get_likes(posts_id):
+    # Exécuter une requête SQL pour compter le nombre de likes pour le post spécifié
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT COUNT(*) FROM likes WHERE posts_id = %s", (posts_id,))
+    like_count = cursor.fetchone()[0]  # Récupérer le résultat de la requête
+    cursor.close()
+
+    # Retourner le nombre de likes sous forme de réponse JSON
+    return jsonify({'post_id': posts_id, 'like_count': like_count}), 200
+
 
     
 

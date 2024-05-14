@@ -207,6 +207,39 @@ def update_universe(id):
 
     return jsonify({'message': 'Mise à jour de l\'univers réussie'}), 200
 
+
+# _________________________ POSTS _________________________ 
+
+
+@app.route('/api/posts', methods=['POST'])
+@jwt_required() # l'utilisateur est authentifié
+def posts():
+    data = request.get_json()
+    email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
+
+    cursor = mysql.connection.cursor()
+    # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user_id = cursor.fetchone()[0]  # Récupérer l'ID de l'utilisateur
+    cursor.close()
+
+    title = data['title']
+    image = data['image']
+    imageTitle = data['imageTitle']
+    content = data['content']
+    link= data['link']
+
+    print("Logged in as:", email)
+
+    print(title)
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link, user_id) VALUES (%s, %s, %s, %s, %s, %s)", (title, image, imageTitle, content, link, user_id))
+    mysql.connection.commit()
+
+    return jsonify({'message': 'Posted !'}), 201
+
+
     
 # _________________________ POST COMMENTS _________________________ 
 

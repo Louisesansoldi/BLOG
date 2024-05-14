@@ -268,6 +268,44 @@ def get_user_posts(user_id):
     else:
         return jsonify({'message': 'No posts found for user with ID {}'.format(user_id)}), 404
 
+
+# _________________________ DELETE POSTS _________________________ 
+
+@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+@jwt_required()
+def delete_post(post_id):
+    # Extraire l'adresse e-mail de l'utilisateur authentifié
+    email = get_jwt_identity()
+
+    # Récupérer l'ID de l'utilisateur à partir de son adresse e-mail
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user_id = cursor.fetchone()
+
+    if user_id is None:
+        cursor.close()
+        return jsonify({'message': 'User not found'}), 404
+
+    # Vérifier si l'utilisateur est l'auteur du post à supprimer
+    cursor.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+    post_author_id = cursor.fetchone()
+
+    if post_author_id is None:
+        cursor.close()
+        return jsonify({'message': 'Post not found'}), 404
+
+    if post_author_id[0] != user_id[0]:
+        cursor.close()
+        return jsonify({'message': 'Unauthorized to delete this post'}), 403
+
+    # Supprimer le post de la base de données
+    cursor.execute("DELETE FROM posts WHERE id = %s", (post_id,))
+    mysql.connection.commit()
+    cursor.close()
+
+    return jsonify({'message': 'Post deleted successfully'}), 200
+
+
 # _________________________ POST COMMENTS _________________________ 
 
 

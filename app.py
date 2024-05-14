@@ -208,7 +208,7 @@ def update_universe(id):
     return jsonify({'message': 'Mise à jour de l\'univers réussie'}), 200
 
     
-# _________________________ COMMENTS _________________________ 
+# _________________________ POST COMMENTS _________________________ 
 
 
 @app.route('/api/comments/<int:posts_id>', methods=['POST'])
@@ -248,7 +248,33 @@ def comments(posts_id):
 
     return jsonify({'message': 'Commentaire posté !'}), 201
 
+# _________________________ GET COMMENTS _________________________ 
 
+@app.route('/api/comments/<int:posts_id>', methods=['GET'])
+@jwt_required() # l'utilisateur est authentifié
+def get_comments(posts_id):
+    # Récupérer les données de l'univers
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, user_name, contentComments FROM comments WHERE posts_id = %s", (posts_id,))
+    comments_data = cursor.fetchall()
+    cursor.close()
+
+    comments = []
+    if comments_data:
+        for comment_data in comments_data:
+            comment = {
+                'id': comment_data[0],
+                'user_name': comment_data[1],
+                'contentComments': comment_data[2],
+            }
+            comments.append(comment)
+
+        return jsonify(comments), 200
+    else:
+        return jsonify({'message': 'No comments found for post with ID {}'.format(posts_id)}), 404
+
+
+    
 
 # if __name__ == '__main__':
 #     app.run(debug=True)

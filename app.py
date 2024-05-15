@@ -218,18 +218,24 @@ def posts():
     data = request.get_json()
     email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
 
-# Récupérer le fichier image depuis les données JSON
-    image_file = request.files['image']
+
     
-    # Envoyer l'image à Cloudinary
-    response = upload(image_file)
-    imageUrl = response['secure_url']
+
+    # Récupérer les données de l'image à partir des données JSON
+    imageUrl = data.get('imageUrl')
+    imageTitle = data.get('imageTitle')
 
     cursor = mysql.connection.cursor()
     # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
     cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
     user_id = cursor.fetchone()[0]  # Récupérer l'ID de l'utilisateur
     cursor.close()
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id FROM universe WHERE user_id = %s", (user_id,))
+    universe_id = cursor.fetchone()[0]
+    cursor.close()
+
 
     title = data['title']
     # image = data['image']

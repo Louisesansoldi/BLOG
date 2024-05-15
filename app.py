@@ -4,6 +4,7 @@ import bcrypt
 import os
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from cloudinary.uploader import upload
 
 load_dotenv()
 
@@ -217,6 +218,13 @@ def posts():
     data = request.get_json()
     email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
 
+# Récupérer le fichier image depuis les données JSON
+    image_file = request.files['image']
+    
+    # Envoyer l'image à Cloudinary
+    response = upload(image_file)
+    imageUrl = response['secure_url']
+
     cursor = mysql.connection.cursor()
     # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
     cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
@@ -224,7 +232,7 @@ def posts():
     cursor.close()
 
     title = data['title']
-    image = data['image']
+    # image = data['image']
     imageTitle = data['imageTitle']
     content = data['content']
     link= data['link']
@@ -235,7 +243,7 @@ def posts():
     print(title)
 
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link, user_id, universe_id) VALUES (%s, %s, %s, %s, %s, %s, %s)", (title, image, imageTitle, content, link, user_id, universe_id))
+    cursor.execute("INSERT INTO posts (title, imageUrl, imageTitle, content, link, user_id, universe_id) VALUES (%s, %s, %s, %s, %s, %s, %s)", (title, imageUrl, imageTitle, content, link, user_id, universe_id))
     mysql.connection.commit()
 
     return jsonify({'message': 'Posted !'}), 201

@@ -5,6 +5,19 @@ import os
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from cloudinary.uploader import upload
+from flask_cors import CORS, cross_origin
+import cloudinary
+import cloudinary.api
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
+
+# Configuration       
+cloudinary.config( 
+    cloud_name = "ddw3sbubm", 
+    api_key = "442925864536122", 
+    api_secret = "ubF2Szdro5MDyqU2EaAO8GJZjv0",
+    secure=True
+)
 
 load_dotenv()
 
@@ -29,7 +42,22 @@ mysql = MySQL()
 mysql.init_app(app)
 
 
+# _________________________ UPLOAD IMAGES _________________________ 
 
+@app.route("/api/upload", methods=['POST'])
+@cross_origin()
+def upload_file():
+    app.logger.info('in upload route')
+
+    upload_result = None
+    if request.method == 'POST':
+        file_to_upload = request.files['file']
+        app.logger.info('%s file_to_upload', file_to_upload)
+        if file_to_upload:
+            upload_result = upload(file_to_upload)
+            app.logger.info(upload_result)
+            return jsonify(upload_result)
+        
 # _________________________ TEST _________________________ 
 @app.route("/")
 def hello_world():
@@ -93,11 +121,20 @@ def login():
 @app.route('/api/universe', methods=['POST'])
 @jwt_required() # l'utilisateur est authentifié
 def universe():
-    data = request.get_json()
-    email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
-    titleUniverse = data['titleUniverse']
-    backgroundUniverse = data['backgroundUniverse']
-    descriptionUniverse = data['descriptionUniverse']
+    titleUniverse = request.form['titleUniverse']
+    descriptionUniverse = request.form['descriptionUniverse']
+    
+    # Récupérer le fichier image depuis la requête
+    background_image = request.files['backgroundUniverse']
+
+    # Télécharger l'image vers Cloudinary
+    upload_result = upload(background_image)
+
+    # Extraire l'URL de l'image téléchargée depuis Cloudinary
+    background_image_url = upload_result['secure_url']
+
+    # Vous pouvez récupérer l'identité de l'utilisateur à partir du token JWT
+    email = get_jwt_identity()
 
     cursor = mysql.connection.cursor()
     # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
@@ -105,13 +142,12 @@ def universe():
     user_id = cursor.fetchone()[0]  # Récupérer l'ID de l'utilisateur
     cursor.close()
 
-    print("Logged in as:", email)
-
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO universe (titleUniverse, descriptionUniverse, backgroundUniverse, user_id) VALUES (%s, %s, %s, %s)", (titleUniverse, descriptionUniverse, backgroundUniverse, user_id))
+    cursor.execute("INSERT INTO universe (titleUniverse, descriptionUniverse, backgroundUniverse, user_id) VALUES (%s, %s, %s, %s)", (titleUniverse, descriptionUniverse, background_image_url, user_id))
     mysql.connection.commit()
 
-    return jsonify({'message': 'This is your universe' }), 201
+    return jsonify({'message': 'This is your universe'}), 201
+
 
 
 # _________________________ GET ALL UNIVERSES _________________________ 

@@ -6,62 +6,215 @@ flask --app hello run
 DEBUG : flask --app hello --debug run
 
 ## ENDPOINTS 
+REGISTER
+______________________REGISTER____________________________
 
-### REGISTER : 
+1. /api/auth/register - POST
+Request Body:
 
-/api/auth/register // POST // name - email - password
+{
+    "name": "user_name",
+    "email": "user_email",
+    "password": "user_password"
+}
+Response:
 
-### LOGIN : 
+{
+    "message": "User registered successfully"
+}
+Status Code: 201 Created
 
-/api/auth/login // POST // email - password
+_______________________LOGIN___________________________
 
-### CREATE UNIVERSE :
+2. /api/auth/login - POST
+Request Body:
 
-/api/universe // POST // if the user is logged : can create an universer (id - titleUniverse - backgroundUniverse - descriptionUniverse)
+{
+    "email": "user_email",
+    "password": "user_password"
+}
+Response:
 
-### GET ALL UNIVERSE :
+{
+    "token": "jwt_token"
+}
+Status Code: 200 OK or 401 Unauthorized with message Invalid email or password
 
-/api/universe // GET // can see all universes (id - titleUniverse - backgroundUniverse - descriptionUniverse)
+________________________POST UNIVERSE__________________________
 
-### GET 1 UNIVERSE :
 
-/api/universe/<int:id> // GET // if the user is logged : can see his universe and another person's world (id - titleUniverse - backgroundUniverse - descriptionUniverse)
+3. /api/universe - POST
+Request Body:
 
-### UPDATE UNIVERSE :
+{
+    "titleUniverse": "universe_title",
+    "backgroundUniverse": "universe_background",
+    "descriptionUniverse": "universe_description"
+}
+Response:
 
-/api/universe/<int:id> // PUT // if the user is logged : can modify his universe (id - titleUniverse - backgroundUniverse - descriptionUniverse)
+{
+    "message": "This is your universe"
+}
+Status Code: 201 Created
 
-### POST :
+________________________GET ALL UNIVERSE__________________________
 
-/api/posts // POST / if the user is logged : can post (title - image - imageTitle - content - link)
+4. /api/universe - GET
+Response:
 
-### GET POST :
+[
+    {
+        "id": universe_id,
+        "titleUniverse": "universe_title",
+        "descriptionUniverse": "universe_description",
+        "backgroundUniverse": "base64_encoded_background"
+    },
+    ...
+]
+Status Code: 200 OK or 404 Not Found with message No universes found
 
-/api/posts/<int:user_id> // GET / if the user is logged : can see posts (id - title - image - imageTitle - content - link - user_id) 
+________________________GET 1 UNIVERSE__________________________
 
-### DELETE 1 POST :
+5. /api/universe/<int:id> - GET
+Response:
 
-/api/posts/<int:post_id> // DELETE // if the user is logged : can delete his post (id - user_id)
+{
+    "id": universe_id,
+    "titleUniverse": "universe_title",
+    "descriptionUniverse": "universe_description",
+    "backgroundUniverse": "base64_encoded_background"
+}
+Status Code: 200 OK or 404 Not Found with message No universes found
 
-### ADD POSTS FROM ANOTHER UNIVERSE : 
+________________________UPDATE 1 UNIVERSE__________________________
 
-/api/posts/<int:post_id>/copy_to_universe/<int:universe_id> // POST // if the user is logged : can add posts to his universe from another one (id - posts_id - universe_id) 
+6. /api/universe/<int:id> - PUT
+Request Body:
 
-### POST COMMENT :
+{
+    "titleUniverse": "new_title",
+    "backgroundUniverse": "new_background",
+    "descriptionUniverse": "new_description"
+}
+Response:
 
-/api/comments/<int:posts_id> // POST // if the user is logged : can post a comment on a post (user_name - user_id - posts_id - contentComments)
+{
+    "message": "Mise à jour de l'univers réussie"
+}
+Status Code: 200 OK, 403 Forbidden with message Vous n'êtes pas autorisé à mettre à jour cet univers, or 404 Not Found with message Utilisateur introuvable
 
-### GET COMMENT :
+________________________POST A POST__________________________
 
-/api/comments/<int:posts_id> // GET // if the user is logged : can see comments on a post (id - user_name - contentComments - posts_id)
+7. /api/posts - POST
+Request Body:
 
-### ADD LIKES :
+{
+    "title": "post_title",
+    "imageUrl": "post_image_url",
+    "imageTitle": "post_image_title",
+    "content": "post_content",
+    "link": "post_link"
+}
+Response:
 
-/api/posts/<int:posts_id>/likes // POST // if the user is logged : can add like on a post (posts_id - likes_count)
+{
+    "message": "Posted !"
+}
+Status Code: 201 Created
 
-### GET COUNT LIKES :
+________________________GET POST__________________________
 
-/api/posts/<int:posts_id>/likes // GET // if the user is logged : can see the number of likes per post (posts_id - likes_count)
+8. /api/posts/<int:user_id> - GET
+Response:
+
+{
+    "user_id": user_id,
+    "posts": [
+        {
+            "id": post_id,
+            "title": "post_title",
+            "image": "base64_encoded_image",
+            "imageTitle": "post_image_title",
+            "content": "post_content",
+            "link": "post_link"
+        },
+        ...
+    ]
+}
+Status Code: 200 OK or 404 Not Found with message No posts found for user with ID {user_id}
+
+_______________________DELETE MY POST___________________________
+
+9. /api/posts/<int:post_id> - DELETE
+Response:
+
+{
+    "message": "Post deleted successfully"
+}
+Status Code: 200 OK, 403 Forbidden with message you cannot delete this post, or 404 Not Found with message Post not found
+
+__________________ADD POST TO MY UNIVERSE FROM ANOTHER ONE ____________________
+
+10. /api/posts/<int:post_id>/copy_to_universe/<int:universe_id> - POST
+Response:
+
+{
+    "message": "Post copied to universe successfully"
+}
+Status Code: 200 OK or 404 Not Found with messages Source post not found, Target universe not found, or User not found
+
+_______________________COMMENTS___________________________
+
+11. /api/comments/<int:posts_id> - POST
+Request Body:
+
+{
+    "contentComments": "comment_content"
+}
+Response:
+
+{
+    "message": "Commentaire posté !"
+}
+Status Code: 201 Created
+
+______________________GET COMMENTS____________________________
+
+12. /api/comments/<int:posts_id> - GET
+Response:
+
+[
+    {
+        "id": comment_id,
+        "user_name": "comment_author",
+        "contentComments": "comment_content"
+    },
+    ...
+]
+Status Code: 200 OK or 404 Not Found with message No comments found for post with ID {posts_id}
+
+_______________________ADD LIKE___________________________
+
+13. /api/posts/<int:posts_id>/likes - POST
+Response:
+
+{
+    "message": "Post liked successfully"
+}
+Status Code: 200 OK or 404 Not Found with message Post not found
+
+_________________________GET LIKES OF 1 POST_________________________
+
+4. /api/posts/<int:posts_id>/likes - GET
+Response:
+
+{
+    "post_id": posts_id,
+    "like_count": like_count
+}
+Status Code: 200 OK
+
 
 ________________________________________________
 

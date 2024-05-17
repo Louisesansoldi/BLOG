@@ -152,8 +152,6 @@ def universe():
 
 # _________________________ GET ALL UNIVERSES _________________________ 
 
-import base64
-
 @app.route('/api/universe', methods=['GET'])
 @jwt_required() # l'utilisateur est authentifié
 def get_universes():
@@ -170,14 +168,14 @@ def get_universes():
                 'id': universe_data[0],
                 'titleUniverse': universe_data[1],
                 'descriptionUniverse': universe_data[2],
-                # Convertir backgroundUniverse de BLOB en Base64
-                'backgroundUniverse': base64.b64encode(universe_data[3]).decode('utf-8')
+                'backgroundUniverse': universe_data[3]  # Utilisez directement l'URL de l'image
             }
             universes.append(universe)
 
         return jsonify(universes), 200
     else:
         return jsonify({'message': 'No universes found'}), 404
+
 
 
 # _________________________ GET 1 UNIVERSE _________________________ 
@@ -197,21 +195,21 @@ def get_universe(id):
                 'id': universe_data[0],
                 'titleUniverse': universe_data[1],
                 'descriptionUniverse': universe_data[2],
-                # Convertir backgroundUniverse de BLOB en Base64
-                'backgroundUniverse': base64.b64encode(universe_data[3]).decode('utf-8')
+                'backgroundUniverse': universe_data[3]  # Utilisez directement l'URL de l'image
             }
             universes.append(universe)
 
         return jsonify(universes), 200
     else:
         return jsonify({'message': 'No universes found'}), 404
+    
 
 # _________________________ UPDATE UNIVERSE _________________________                  PROBLEM ?
 
 @app.route('/api/universe/<int:id>', methods=['PUT'])
 @jwt_required() # l'utilisateur est authentifié
 def update_universe(id):
-    data = request.get_json()
+    data = request.form
     email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
 
     # Récupérer l'ID de l'utilisateur à partir de son adresse e-mail
@@ -236,10 +234,18 @@ def update_universe(id):
 
     # Mettre à jour l'univers
     titleUniverse = data.get('titleUniverse')
-    backgroundUniverse = data.get('backgroundUniverse')
     descriptionUniverse = data.get('descriptionUniverse')
 
-    cursor.execute("UPDATE universe SET titleUniverse = %s, backgroundUniverse = %s, descriptionUniverse = %s WHERE id = %s", (titleUniverse, backgroundUniverse, descriptionUniverse, id))
+    # Récupérer le fichier image depuis la requête
+    background_image = request.files['backgroundUniverse']
+
+    # Télécharger l'image vers Cloudinary
+    upload_result = upload(background_image)
+
+    # Extraire l'URL de l'image téléchargée depuis Cloudinary
+    background_image_url = upload_result['secure_url']
+
+    cursor.execute("UPDATE universe SET titleUniverse = %s, backgroundUniverse = %s, descriptionUniverse = %s WHERE id = %s", (titleUniverse, background_image_url, descriptionUniverse, id))
     mysql.connection.commit()
 
     return jsonify({'message': 'Mise à jour de l\'univers réussie'}), 200

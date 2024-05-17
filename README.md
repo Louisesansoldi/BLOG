@@ -48,7 +48,7 @@ Request Body:
 
 {
     "titleUniverse": "universe_title",
-    "backgroundUniverse": "universe_background",
+    "backgroundUniverse": "universe_background_url",
     "descriptionUniverse": "universe_description"
 }
 Response:
@@ -68,7 +68,7 @@ Response:
         "id": universe_id,
         "titleUniverse": "universe_title",
         "descriptionUniverse": "universe_description",
-        "backgroundUniverse": "base64_encoded_background"
+        "backgroundUniverse": "universe_background_url"
     },
     ...
 ]
@@ -83,7 +83,7 @@ Response:
     "id": universe_id,
     "titleUniverse": "universe_title",
     "descriptionUniverse": "universe_description",
-    "backgroundUniverse": "base64_encoded_background"
+    "backgroundUniverse": "universe_background_url"
 }
 Status Code: 200 OK or 404 Not Found with message No universes found
 
@@ -94,7 +94,7 @@ Request Body:
 
 {
     "titleUniverse": "new_title",
-    "backgroundUniverse": "new_background",
+    "backgroundUniverse": "new_background_url",
     "descriptionUniverse": "new_description"
 }
 Response:
@@ -112,9 +112,9 @@ Request Body:
 {
     "title": "post_title",
     "imageUrl": "post_image_url",
-    "imageTitle": "post_image_title",
     "content": "post_content",
     "link": "post_link"
+    "canvaUrl": "post_canva_url",
 }
 Response:
 
@@ -134,10 +134,12 @@ Response:
         {
             "id": post_id,
             "title": "post_title",
-            "image": "base64_encoded_image",
-            "imageTitle": "post_image_title",
+            "imageUrl" : "imageUrl",
             "content": "post_content",
-            "link": "post_link"
+            "link": "post_link",
+            "user-id" : "user_id",
+            "canvaUrl": "canvaUrl"
+
         },
         ...
     ]

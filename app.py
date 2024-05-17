@@ -261,12 +261,15 @@ def posts():
 
     # Récupérer les données de l'image à partir de la requête
     image = request.files['imageUrl']
+    canva = request.files['canvaUrl']
 
     # Télécharger l'image vers Cloudinary
     upload_result = upload(image)
+    upload_result_canva = upload(canva)
 
     # Extraire l'URL de l'image téléchargée depuis Cloudinary
     image_url = upload_result['secure_url']
+    canva_url = upload_result_canva['secure_url']
 
     cursor = mysql.connection.cursor()
     # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
@@ -289,7 +292,7 @@ def posts():
     print(title)
 
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO posts (title, imageUrl, content, link, user_id, universe_id) VALUES (%s, %s, %s, %s, %s, %s)", (title, image_url, content, link, user_id, universe_id))
+    cursor.execute("INSERT INTO posts (title, imageUrl, content, link, user_id, universe_id, canvaUrl) VALUES (%s, %s, %s, %s, %s, %s, %s)", (title, image_url, content, link, user_id, universe_id, canva_url))
     mysql.connection.commit()
 
     return jsonify({'message': 'Posted !'}), 201
@@ -312,11 +315,11 @@ def get_user_posts(user_id):
             post_data = {
                 'id': post[0],
                 'title': post[1],
-                'imageUrl': post[9],  # Assuming the URL of the image is stored in the second column
-                'imageTitle': post[8],
+                'imageUrl': post[6],  # Assuming the URL of the image is stored in the second column
                 'content': post[2],
                 'link': post[3],
-                'user_id': post[6]  # Assuming user_id is the 7th column in your table
+                'user_id': post[4],
+                'canvaUrl': post[7]   # Assuming user_id is the 7th column in your table
             }
             posts_data.append(post_data)
 

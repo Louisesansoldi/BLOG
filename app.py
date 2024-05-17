@@ -369,17 +369,19 @@ def delete_post(post_id):
 
 # _________________________ ADD POSTS TO MY UNIVERSE FROM ANOTHER ONE _________________________ 
 
-@app.route('/api/posts/<int:post_id>/copy_to_universe/<int:universe_id>', methods=['POST'])
-@jwt_required() # L'utilisateur est authentifié
-def add_post_from_another_one(post_id, universe_id):
+@app.route('/api/posts/<int:id>/copy_to_universe/<int:universe_id>', methods=['POST'])
+@jwt_required()  # L'utilisateur est authentifié
+def add_post_from_another_one(id, universe_id):
     # Récupérer l'adresse e-mail de l'utilisateur authentifié
     email = get_jwt_identity()
 
     # Vérifier si le post existe dans l'univers source
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT * FROM posts WHERE id = %s", (post_id,))
+    cursor.execute("SELECT * FROM posts WHERE id = %s", (id,))
     source_post = cursor.fetchone()
     cursor.close()
+
+    print(f"Source post: {source_post}")  # Log source post
 
     if not source_post:
         return jsonify({'message': 'Source post not found'}), 404
@@ -390,6 +392,8 @@ def add_post_from_another_one(post_id, universe_id):
     target_universe = cursor.fetchone()
     cursor.close()
 
+    
+
     if not target_universe:
         return jsonify({'message': 'Target universe not found'}), 404
 
@@ -397,18 +401,22 @@ def add_post_from_another_one(post_id, universe_id):
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
     user_id_row = cursor.fetchone()
+    cursor.close()
 
     if not user_id_row:
         return jsonify({'message': 'User not found'}), 404
 
     user_id = user_id_row[0]  # Récupérer l'ID de l'utilisateur
-    cursor.close()
 
     # Copier le post de l'univers source vers l'univers cible
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO posts (title, image, imageTitle, content, link, user_id, universe_id) "
+    cursor.execute(
+    "INSERT INTO posts (title, imageUrl, content, link, user_id, universe_id, canvaUrl) "
     "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-     (source_post[1], source_post[2], source_post[3], source_post[4], source_post[5], user_id, universe_id))
+    (source_post[1], source_post[6], source_post[2], source_post[3], user_id, universe_id, source_post[7])
+)
+
+
     mysql.connection.commit()
     cursor.close()
 

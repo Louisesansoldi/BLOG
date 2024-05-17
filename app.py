@@ -257,15 +257,16 @@ def update_universe(id):
 @app.route('/api/posts', methods=['POST'])
 @jwt_required() # l'utilisateur est authentifié
 def posts():
-    data = request.get_json()
     email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
 
+    # Récupérer les données de l'image à partir de la requête
+    image = request.files['imageUrl']
 
-    
+    # Télécharger l'image vers Cloudinary
+    upload_result = upload(image)
 
-    # Récupérer les données de l'image à partir des données JSON
-    imageUrl = data.get('imageUrl')
-    imageTitle = data.get('imageTitle')
+    # Extraire l'URL de l'image téléchargée depuis Cloudinary
+    image_url = upload_result['secure_url']
 
     cursor = mysql.connection.cursor()
     # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
@@ -278,23 +279,21 @@ def posts():
     universe_id = cursor.fetchone()[0]
     cursor.close()
 
-
+    # Récupérer les autres données du post à partir des données JSON
+    data = request.form
     title = data['title']
-    # image = data['image']
-    imageTitle = data['imageTitle']
     content = data['content']
-    link= data['link']
-    
+    link = data['link']
 
     print("Logged in as:", email)
-
     print(title)
 
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO posts (title, imageUrl, imageTitle, content, link, user_id, universe_id) VALUES (%s, %s, %s, %s, %s, %s, %s)", (title, imageUrl, imageTitle, content, link, user_id, universe_id))
+    cursor.execute("INSERT INTO posts (title, imageUrl, content, link, user_id, universe_id) VALUES (%s, %s, %s, %s, %s, %s)", (title, image_url, content, link, user_id, universe_id))
     mysql.connection.commit()
 
     return jsonify({'message': 'Posted !'}), 201
+
 
 # _________________________ GET POSTS _________________________ 
     
@@ -313,10 +312,10 @@ def get_user_posts(user_id):
             post_data = {
                 'id': post[0],
                 'title': post[1],
-                'image': base64.b64encode(post[2]).decode('utf-8'),
-                'imageTitle': post[3],
-                'content': post[4],
-                'link': post[5],
+                'imageUrl': post[9],  # Assuming the URL of the image is stored in the second column
+                'imageTitle': post[8],
+                'content': post[2],
+                'link': post[3],
                 'user_id': post[6]  # Assuming user_id is the 7th column in your table
             }
             posts_data.append(post_data)
@@ -324,6 +323,8 @@ def get_user_posts(user_id):
         return jsonify({'user_id': user_id, 'posts': posts_data}), 200
     else:
         return jsonify({'message': 'No posts found for user with ID {}'.format(user_id)}), 404
+    
+
 
 
 # _________________________ DELETE POSTS _________________________ 

@@ -40,6 +40,7 @@ jwt = JWTManager(app)
 
 mysql = MySQL()
 mysql.init_app(app)
+CORS(app)
 
 
 # _________________________ UPLOAD IMAGES _________________________ 

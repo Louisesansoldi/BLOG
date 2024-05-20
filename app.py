@@ -10,6 +10,7 @@ import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 from cloudinary.utils import cloudinary_url
+from urllib.parse import urlparse
 
 # Configuration       
 cloudinary.config( 
@@ -22,10 +23,22 @@ cloudinary.config(
 load_dotenv()
 
 app = Flask(__name__)
-app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
-app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
-app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+url = urlparse(DATABASE_URL)
+
+
+app.config['MYSQL_HOST'] = url.hostname
+app.config['MYSQL_USER'] = url.username
+app.config['MYSQL_PASSWORD'] = url.password
+app.config['MYSQL_DB'] = url.path[1:]  # Pour enlever le '/' initial du chemin
+app.config['MYSQL_PORT'] = url.port
+
+# app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
+# app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
+# app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
+# app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
+
 app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
 app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 app.config['JWT_HEADER_NAME'] = 'Authorization'

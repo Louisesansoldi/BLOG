@@ -43,6 +43,15 @@ mysql.init_app(app)
 CORS(app)
 
 
+@app.route('/test_db')
+def test_db():
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT 1")
+        return "Connection Successful", 200
+    except Exception as e:
+        return str(e), 500
+
 # _________________________ UPLOAD IMAGES _________________________ 
 
 @app.route("/api/upload", methods=['POST'])

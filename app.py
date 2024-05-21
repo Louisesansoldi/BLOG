@@ -11,6 +11,8 @@ import cloudinary.api
 import cloudinary.uploader
 from cloudinary.utils import cloudinary_url
 from urllib.parse import urlparse
+import requests
+import io
 
 # Configuration       
 cloudinary.config( 
@@ -67,6 +69,21 @@ def test_db():
 
 # _________________________ UPLOAD IMAGES _________________________ 
 
+# @app.route("/api/upload", methods=['POST'])
+# @cross_origin()
+# def upload_file():
+#     app.logger.info('in upload route')
+
+#     upload_result = None
+#     if request.method == 'POST':
+#         file_to_upload = request.files['file']
+#         app.logger.info('%s file_to_upload', file_to_upload)
+#         if file_to_upload:
+#             upload_result = upload(file_to_upload)
+#             app.logger.info(upload_result)
+#             return jsonify(upload_result)
+
+
 @app.route("/api/upload", methods=['POST'])
 @cross_origin()
 def upload_file():
@@ -74,12 +91,36 @@ def upload_file():
 
     upload_result = None
     if request.method == 'POST':
-        file_to_upload = request.files['file']
-        app.logger.info('%s file_to_upload', file_to_upload)
-        if file_to_upload:
+        if 'file' in request.files:
+            # Gestion du téléchargement de fichiers
+            file_to_upload = request.files['file']
+            app.logger.info('%s file_to_upload', file_to_upload)
+            if file_to_upload:
+                upload_result = upload(file_to_upload)
+                app.logger.info(upload_result)
+        elif 'url' in request.json:
+            # Gestion de l'URL de l'image
+            image_url = request.json['url']
+            app.logger.info('%s image_url', image_url)
+            if image_url:
+                upload_result = upload_image_url(image_url)
+                app.logger.info(upload_result)
+        else:
+            return jsonify({'message': 'No file or URL provided'}), 400
+        
+        return jsonify(upload_result)
+
+def upload_image_url(image_url):
+    # Fonction pour télécharger l'image à partir de l'URL et l'uploader sur Cloudinary
+    response = requests.get(image_url)
+    if response.status_code == 200:
+            file_to_upload = io.BytesIO(response.content)
+            file_to_upload.name = 'uploaded_from_url'  # Ajout d'un nom de fichier temporaire
             upload_result = upload(file_to_upload)
-            app.logger.info(upload_result)
-            return jsonify(upload_result)
+            return upload_result
+    else:
+            return {'message': 'Failed to fetch image from URL'}, 400
+
         
 # _________________________ TEST _________________________ 
 @app.route("/")
@@ -142,35 +183,63 @@ def login():
 
 
 @app.route('/api/universe', methods=['POST'])
-@jwt_required() # l'utilisateur est authentifié
+@jwt_required()
 def universe():
-    titleUniverse = request.form['titleUniverse']
-    descriptionUniverse = request.form['descriptionUniverse']
+    # Try to get JSON data
+    data = request.get_json(silent=True)
     
-    # Récupérer le fichier image depuis la requête
-    background_image = request.files['backgroundUniverse']
+    if data:
+        # If JSON data is provided
+        titleUniverse = data.get('titleUniverse')
+        descriptionUniverse = data.get('descriptionUniverse')
+        image_url = data.get('backgroundUniverse')  # URL de l'image
+    else:
+        # If form-data is provided
+        titleUniverse = request.form.get('titleUniverse')
+        descriptionUniverse = request.form.get('descriptionUniverse')
+        image_url = request.form.get('backgroundUniverse')  # URL de l'image
 
-    # Télécharger l'image vers Cloudinary
-    upload_result = upload(background_image)
+    background_image = request.files.get('backgroundUniverse')  # Fichier image téléchargé
 
-    # Extraire l'URL de l'image téléchargée depuis Cloudinary
-    background_image_url = upload_result['secure_url']
+    background_image_url = None
 
-    # Vous pouvez récupérer l'identité de l'utilisateur à partir du token JWT
+    if background_image:
+        # Télécharger l'image vers Cloudinary
+        upload_result = upload(background_image)
+        background_image_url = upload_result['secure_url']
+    elif image_url:
+        # Télécharger l'image depuis l'URL vers Cloudinary
+        try:
+            response = requests.get(image_url)
+            response.raise_for_status()
+            image_file = io.BytesIO(response.content)
+            upload_result = upload(image_file)
+            background_image_url = upload_result['secure_url']
+        except requests.RequestException as e:
+            return jsonify({'message': 'Image URL is not accessible', 'error': str(e)}), 400
+    else:
+        return jsonify({'message': 'No image provided'}), 400
+
+    if not titleUniverse or not descriptionUniverse or not background_image_url:
+        return jsonify({'message': 'Missing required fields'}), 400
+
     email = get_jwt_identity()
 
     cursor = mysql.connection.cursor()
-    # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
     cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-    user_id = cursor.fetchone()[0]  # Récupérer l'ID de l'utilisateur
+    user_result = cursor.fetchone()
+    if not user_result:
+        return jsonify({'message': 'User not found'}), 404
+    user_id = user_result[0]
     cursor.close()
 
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO universe (titleUniverse, descriptionUniverse, backgroundUniverse, user_id) VALUES (%s, %s, %s, %s)", (titleUniverse, descriptionUniverse, background_image_url, user_id))
+    cursor.execute("INSERT INTO universe (titleUniverse, descriptionUniverse, backgroundUniverse, user_id) VALUES (%s, %s, %s, %s)", 
+                   (titleUniverse, descriptionUniverse, background_image_url, user_id))
     mysql.connection.commit()
+    cursor.close()
 
     return jsonify({'message': 'This is your universe'}), 201
-
 
 
 # _________________________ GET ALL UNIVERSES _________________________ 
@@ -282,17 +351,37 @@ def update_universe(id):
 def posts():
     email = get_jwt_identity() # Récupérer l'adresse e-mail de l'utilisateur authentifié
 
+    data = request.get_json(silent=True)
+
+    if data:
+        # JSON
+        image_url = data.get('imageUrl')
+        canva_url = data.get('canvaUrl')
+        title = data.get('title')
+        content = data.get('content')
+        link = data.get('link')
+    else:
+        # form-data
+        title = request.form.get('title')
+        content = request.form.get('content')
+        link = request.form.get('link')
+
     # Récupérer les données de l'image à partir de la requête
-    image = request.files['imageUrl']
-    canva = request.files['canvaUrl']
+    image = request.files.get('imageUrl')
+    canva = request.files.get('canvaUrl')
 
-    # Télécharger l'image vers Cloudinary
-    upload_result = upload(image)
-    upload_result_canva = upload(canva)
+    if image:
+            # Télécharger l'image vers Cloudinary
+            upload_result = upload(image)
+            image_url = upload_result['secure_url']
 
-    # Extraire l'URL de l'image téléchargée depuis Cloudinary
-    image_url = upload_result['secure_url']
-    canva_url = upload_result_canva['secure_url']
+    if canva:
+            # Télécharger le canva vers Cloudinary
+            upload_result_canva = upload(canva)
+            canva_url = upload_result_canva['secure_url']
+
+    if not image_url or not canva_url:
+        return jsonify({'message': 'Both image and canva are required'}), 400
 
     cursor = mysql.connection.cursor()
     # Sélectionner l'ID de l'utilisateur à partir de son adresse e-mail
@@ -305,14 +394,6 @@ def posts():
     universe_id = cursor.fetchone()[0]
     cursor.close()
 
-    # Récupérer les autres données du post à partir des données JSON
-    data = request.form
-    title = data['title']
-    content = data['content']
-    link = data['link']
-
-    print("Logged in as:", email)
-    print(title)
 
     cursor = mysql.connection.cursor()
     cursor.execute("INSERT INTO posts (title, imageUrl, content, link, user_id, universe_id, canvaUrl) VALUES (%s, %s, %s, %s, %s, %s, %s)", (title, image_url, content, link, user_id, universe_id, canva_url))
